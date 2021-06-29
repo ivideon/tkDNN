@@ -40,7 +40,7 @@ class DetectionNN {
         int nBatches = 1;
 
 #ifdef OPENCV_CUDACONTRIB
-        cv::cuda::GpuMat bgr[3];
+        cv::cuda::GpuMat bgr[4];
         cv::cuda::GpuMat imagePreproc;
 #else
         cv::Mat bgr[3];
@@ -54,7 +54,12 @@ class DetectionNN {
          * @param frame original frame to adapt for inference.
          * @param bi batch index
          */
+#ifdef OPENCV_CUDACONTRIB
+        virtual void preprocess(cv::cuda::GpuMat & orig_img, const int bi = 0) = 0;
+#else
         virtual void preprocess(cv::Mat &frame, const int bi=0) = 0;
+#endif
+
 
         /**
          * This method postprocess the output of the NN to obtain the correct 
@@ -100,7 +105,21 @@ class DetectionNN {
          * @param mAP set to true only if all the probabilities for a bounding 
          *            box are needed, as in some cases for the mAP calculation
          */
-        void update(std::vector<cv::Mat>& frames, const int cur_batches=1, bool save_times=false, std::ofstream *times=nullptr, const bool mAP=false){
+#ifdef OPENCV_CUDACONTRIB
+        void update(std::vector<cv::cuda::GpuMat>& frames,
+                    const int cur_batches=1,
+                    bool save_times=false,
+                    std::ofstream *times=nullptr,
+                    const bool mAP=false)
+
+#else
+        void update(std::vector<cv::Mat>& frames,
+                    const int cur_batches=1,
+                    bool save_times=false,
+                    std::ofstream *times=nullptr,
+                    const bool mAP=false)
+#endif
+        {
             if(save_times && times==nullptr)
                 FatalError("save_times set to true, but no valid ofstream given");
             if(cur_batches > nBatches)

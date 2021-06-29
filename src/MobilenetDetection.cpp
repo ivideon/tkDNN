@@ -236,10 +236,10 @@ void MobilenetDetection::preprocess(cv::Mat &frame, const int bi){
         frame_nomean.convertTo(imagePreproc, CV_32FC3, 1 / 128.0, 0);
 
         //copy image into tensor and copy it into GPU
-        cv::split(imagePreproc, bgr);
+        cv::split(imagePreproc, rgb);
         for (int i = 0; i < netRT->input_dim.c; i++){
             int idx = i * imagePreproc.rows * imagePreproc.cols;
-            memcpy((void *)&input[idx + netRT->input_dim.tot()*bi], (void *)bgr[i].data, imagePreproc.rows * imagePreproc.cols * sizeof(dnnType));
+            memcpy((void *)&input[idx + netRT->input_dim.tot()*bi], (void *)rgb[i].data, imagePreproc.rows * imagePreproc.cols * sizeof(dnnType));
         }
         checkCuda(cudaMemcpyAsync(input_d+ netRT->input_dim.tot()*bi, input + netRT->input_dim.tot()*bi, netRT->input_dim.tot() * sizeof(dnnType), cudaMemcpyHostToDevice, netRT->stream));
 #endif
