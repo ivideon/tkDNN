@@ -55,29 +55,34 @@ bool Yolo3Detection::init(const std::string& tensor_path, const int n_classes, c
     classesNames = getYoloLayer()->classesNames;
     return true;
 } 
+
 #ifdef OPENCV_CUDACONTRIB
 void Yolo3Detection::preprocess(cv::cuda::GpuMat & orig_img, const int bi){
-
     cv::cuda::GpuMat img_resized;
-    cv::cuda::resize(orig_img, img_resized, cv::Size(netRT->input_dim.w, netRT->input_dim.h));
+    cv::Size sz(netRT->input_dim.w, netRT->input_dim.h);
+    cv::cuda::resize(orig_img, img_resized, sz);
 
-    img_resized.convertTo(imagePreproc, CV_32FC4, 1/255.0);
+    //Check type data (4 channel | 3 channel)
+    int type = CV_32FC4;
+    if(orig_img.channels() == 3) {
+        type = CV_32FC3;
+    }
+    img_resized.convertTo(imagePreproc, type, 1/255.0);
 
-    //split channels
+    //split channels.
     cv::cuda::split(imagePreproc, bgr);//split to plane RGBA
 
-    //debug
-    std::cout << "isContinuest = " << bgr->isContinuous() << std::endl;
-    //debug
-
     //write channels
+    cv::Mat bgr_h;
     for(int i=0; i<netRT->input_dim.c; i++) {
-        int size = imagePreproc.rows * imagePreproc.cols;
-//        bgr[ch].download(bgr_h);
-        checkCuda( cudaMemcpy(input_d + i*size + netRT->input_dim.tot()*bi,
-                              (float*)bgr[i].data,
-                              size*sizeof(dnnType),
-                              cudaMemcpyDeviceToDevice));
+        size_t size = imagePreproc.rows * imagePreproc.cols;
+        checkCuda( cudaMemcpy2D(input_d + i*size + netRT->input_dim.tot()*bi,
+                                bgr[i].cols * sizeof(dnnType),
+                                (float*)bgr[i].data,
+                                bgr[i].step,
+                                bgr[i].cols * sizeof(dnnType),
+                                bgr[i].rows,
+                                cudaMemcpyDeviceToDevice));
     }
 }
 #else
